@@ -1,4 +1,9 @@
 
+"""稳定性验证脚本。
+
+该脚本通过模拟 LLM 和数据库工具的异常行为，测试执行引擎的自动修复和重试机制。
+"""
+
 import sys
 from pathlib import Path
 import logging
@@ -16,7 +21,9 @@ from autoplan_agent.config import Settings
 from autoplan_agent.schemas.plan import ExecutionPlan, PlanStep
 from autoplan_agent.schemas.artifacts import Artifact, StepResult
 
+
 def test_retry_on_empty_result():
+    """测试当 SQL 查询返回空结果时的自动修复机制。"""
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("test_stability")
     

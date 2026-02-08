@@ -1,3 +1,8 @@
+"""Matplotlib 可视化工具模块。
+
+该模块提供基于 Matplotlib 的基础图表绘制和保存功能。
+"""
+
 from pathlib import Path
 from typing import Dict, Any
 
@@ -6,6 +11,16 @@ import pandas as pd
 
 
 def plot_chart(df: pd.DataFrame, spec: Dict[str, Any], run_dir: Path) -> Path:
+    """使用 Matplotlib 绘制图表并保存为图片。
+
+    Args:
+        df: 包含绘图数据的数据框。
+        spec: 图表配置，包含 type, x, y, title 等。
+        run_dir: 运行任务目录。
+
+    Returns:
+        Path: 生成的图表图片文件路径。
+    """
     chart_type = spec.get("type", "line")
     x = spec.get("x")
     y = spec.get("y")

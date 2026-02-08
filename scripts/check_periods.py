@@ -1,4 +1,9 @@
 
+"""报告期检查脚本。
+
+该脚本用于检查数据库中财务报告期和报告日期的格式。
+"""
+
 from sqlalchemy import create_engine, text
 import pandas as pd
 

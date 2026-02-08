@@ -1,9 +1,16 @@
 
+"""数据库状态检查脚本。
+
+该脚本用于检查 MySQL 数据库中各表的行数以及表连接的正确性。
+"""
+
 from sqlalchemy import create_engine, text
 from autoplan_agent.config import Settings
 import pandas as pd
 
+
 def check_db():
+    """检查数据库表状态和连接逻辑。"""
     settings = Settings()
     engine = create_engine(settings.mysql_dsn())
     with engine.connect() as conn:
@@ -53,6 +60,7 @@ def check_db():
         """
         full_count = conn.execute(text(full_sql)).scalar()
         print(f'Full join count (with SUBSTR): {full_count}')
+
 
 if __name__ == '__main__':
     check_db()

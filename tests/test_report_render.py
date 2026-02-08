@@ -1,3 +1,8 @@
+"""报告渲染功能测试模块。
+
+该模块测试 Markdown 和 HTML 报告的模板渲染功能。
+"""
+
 from pathlib import Path
 
 from autoplan_agent.schemas.understanding import TaskUnderstandingReport
@@ -5,6 +10,11 @@ from autoplan_agent.tools.report.render import render_markdown, render_html
 
 
 def test_render_report(tmp_path: Path):
+    """测试报告渲染过程。
+
+    Args:
+        tmp_path: 临时路径对象。
+    """
     templates_dir = Path("templates/report")
     context = {
         "summary": "summary",

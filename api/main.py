@@ -1,3 +1,8 @@
+"""API 入口模块。
+
+该模块初始化 FastAPI 应用并包含所有路由。
+"""
+
 from fastapi import FastAPI
 
 from api.routers.health import router as health_router

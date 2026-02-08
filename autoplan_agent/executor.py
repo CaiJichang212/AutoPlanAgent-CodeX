@@ -1,3 +1,8 @@
+"""执行器模块。
+
+该模块负责执行执行计划中的各个步骤，包括工具调用、结果处理、报告合成和错误修复。
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -13,6 +18,14 @@ from autoplan_agent.tools.mysql.client import load_mysql_schema_hint
 
 
 def _last_dataset(artifacts: List[Artifact]) -> Artifact | None:
+    """从产物列表中获取最后一个数据集产物。
+
+    Args:
+        artifacts: 产物列表。
+
+    Returns:
+        Artifact | None: 最后一个数据集产物，如果没有则返回 None。
+    """
     for art in reversed(artifacts):
         if art.type == "dataset":
             return art
@@ -20,6 +33,16 @@ def _last_dataset(artifacts: List[Artifact]) -> Artifact | None:
 
 
 def _build_report_inputs(state: Dict[str, Any], artifacts: List[Artifact], llm: Any = None) -> Dict[str, Any]:
+    """构建报告生成的输入数据。
+
+    Args:
+        state: 当前工作流状态。
+        artifacts: 已生成的产物列表。
+        llm: LLM 实例，用于合成报告内容。
+
+    Returns:
+        Dict[str, Any]: 报告生成所需的输入数据字典。
+    """
     understanding = state.get("understanding")
     
     # Collect findings from artifacts
@@ -48,7 +71,7 @@ def _build_report_inputs(state: Dict[str, Any], artifacts: List[Artifact], llm: 
 - recommendations: 基于数据的具体投资或业务建议。
 - data_sources: 描述数据来源。
 - data_quality: 对数据完整性和质量的评价。
-- methods: 描述所使用的分析方法（如 EDA、异常检测等）。
+- methods: 描述所使用的分析方法（如 EDA、统计分析 + 异常检测 + 可视化）。
 - appendix: 任何额外的备注或参考资料。
 """
         try:
@@ -96,6 +119,18 @@ def _repair_step(
     settings,
     llm: Any,
 ) -> Dict[str, Any]:
+    """尝试修复失败的步骤。
+
+    Args:
+        step: 失败的计划步骤。
+        error_message: 错误信息。
+        state: 当前工作流状态。
+        settings: 应用配置。
+        llm: LLM 实例。
+
+    Returns:
+        Dict[str, Any]: 修复后的步骤输入。
+    """
     if not llm:
         return {}
     
@@ -136,6 +171,19 @@ def execute_plan(
     run_path: Path,
     llm: Any = None,
 ) -> Dict[str, Any]:
+    """执行完整的执行计划。
+
+    Args:
+        state: 当前工作流状态。
+        registry: 工具注册表。
+        settings: 应用配置。
+        logger: 日志记录器。
+        run_path: 运行结果存储路径。
+        llm: LLM 实例。
+
+    Returns:
+        Dict[str, Any]: 更新后的工作流状态。
+    """
     plan: ExecutionPlan = state["plan"]
     artifacts: List[Artifact] = state.get("artifacts", [])
     completed: set[str] = set()

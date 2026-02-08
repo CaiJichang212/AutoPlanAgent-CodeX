@@ -1,3 +1,8 @@
+"""SQL 安全防护工具模块。
+
+该模块提供 SQL 语句的校验、限制和修饰功能，确保仅执行安全的 SELECT 查询。
+"""
+
 import re
 from typing import Tuple
 
@@ -14,6 +19,7 @@ ALLOWED_HINT_PATTERN = re.compile(r"/\*\+\s*MAX_EXECUTION_TIME\(\d+\)\s*\*/", re
 
 
 def _extract_allowed_hint(sql: str) -> Tuple[str, str | None]:
+    """提取 SQL 中允许的提示（如 MAX_EXECUTION_TIME）。"""
     match = ALLOWED_HINT_PATTERN.search(sql)
     if not match:
         return sql, None
@@ -22,6 +28,7 @@ def _extract_allowed_hint(sql: str) -> Tuple[str, str | None]:
 
 
 def _strip_trailing_semicolon(sql: str) -> str:
+    """去除 SQL 末尾的分号，并检查安全性。"""
     stripped = sql.rstrip()
     if ";" not in stripped:
         return stripped
@@ -34,6 +41,7 @@ def _strip_trailing_semicolon(sql: str) -> str:
 
 
 def _reapply_hint(sql: str, hint: str | None) -> str:
+    """重新将提取的提示应用到 SQL 中。"""
     if not hint:
         return sql
     stripped = sql.lstrip()
@@ -44,6 +52,15 @@ def _reapply_hint(sql: str, hint: str | None) -> str:
 
 
 def ensure_select_only(sql: str) -> None:
+    """确保 SQL 仅包含 SELECT 语句。
+
+    Args:
+        sql: 待校验的 SQL 字符串。
+
+    Raises:
+        ValueError: 如果包含非 SELECT 语句或不安全字符。
+        RuntimeError: 如果未安装 sqlglot。
+    """
     cleaned, _ = _extract_allowed_hint(sql)
     cleaned = _strip_trailing_semicolon(cleaned)
     if UNSAFE_PATTERN.search(cleaned):
@@ -56,6 +73,18 @@ def ensure_select_only(sql: str) -> None:
 
 
 def enforce_limit(sql: str, max_rows: int) -> Tuple[str, int]:
+    """强制为 SQL 添加 LIMIT 限制。
+
+    Args:
+        sql: 待处理的 SQL 字符串。
+        max_rows: 最大允许行数。
+
+    Returns:
+        Tuple[str, int]: 处理后的 SQL 和实际使用的限制行数。
+
+    Raises:
+        RuntimeError: 如果未安装 sqlglot。
+    """
     if sqlglot is None or exp is None:
         raise RuntimeError("sqlglot is required for SQL validation. Install sqlglot.")
     cleaned, hint = _extract_allowed_hint(sql)
@@ -77,6 +106,15 @@ def enforce_limit(sql: str, max_rows: int) -> Tuple[str, int]:
 
 
 def qualify_tables(sql: str, schema: str) -> str:
+    """为 SQL 中的表名添加指定的 Schema 前缀。
+
+    Args:
+        sql: 待处理的 SQL 字符串。
+        schema: Schema 名称。
+
+    Returns:
+        str: 处理后的 SQL 字符串。
+    """
     if sqlglot is None or exp is None:
         return sql
     if not schema:
@@ -92,6 +130,15 @@ def qualify_tables(sql: str, schema: str) -> str:
 
 
 def strip_table_schema(sql: str, schema: str | None = None) -> str:
+    """去除 SQL 中表名的 Schema 前缀。
+
+    Args:
+        sql: 待处理的 SQL 字符串。
+        schema: 可选的特定 Schema 名称，如果提供则仅移除该 Schema。
+
+    Returns:
+        str: 处理后的 SQL 字符串。
+    """
     if sqlglot is None or exp is None:
         return sql
     cleaned, hint = _extract_allowed_hint(sql)
@@ -100,11 +147,9 @@ def strip_table_schema(sql: str, schema: str | None = None) -> str:
     target = schema.lower() if isinstance(schema, str) and schema else None
     for table in parsed.find_all(exp.Table):
         db = table.args.get("db")
-        if db is None:
-            continue
-        db_name = db.name.lower() if hasattr(db, "name") else str(db).lower()
-        if target is None or db_name == target:
-            table.set("db", None)
+        if db:
+            if target is None or db.name.lower() == target:
+                table.set("db", None)
     return _reapply_hint(parsed.sql(dialect="mysql"), hint)
 
 

@@ -1,3 +1,8 @@
+"""AKShare 财务数据加载脚本。
+
+该脚本用于通过 AKShare 接口抓取 A 股公司的财务报表数据，并将其导入 MySQL 数据库。
+"""
+
 import argparse
 import datetime as dt
 import os
@@ -12,6 +17,14 @@ from autoplan_agent.config import Settings
 
 
 def _import_akshare():
+    """导入 akshare 库。
+
+    Returns:
+        module: akshare 模块。
+
+    Raises:
+        RuntimeError: 如果未安装 akshare。
+    """
     try:
         import akshare as ak  # type: ignore
     except Exception as exc:
@@ -20,6 +33,14 @@ def _import_akshare():
 
 
 def _build_engine() -> Tuple[object, Settings]:
+    """创建数据库引擎和配置对象。
+
+    Returns:
+        Tuple[object, Settings]: 数据库引擎和配置对象。
+
+    Raises:
+        RuntimeError: 如果缺少数据库连接信息。
+    """
     settings = Settings()
     dsn = settings.mysql_dsn()
     if not dsn:
@@ -29,6 +50,16 @@ def _build_engine() -> Tuple[object, Settings]:
 
 
 def _daterange(start_year: int, end_year: int, annual_only: bool) -> List[str]:
+    """生成报告期日期列表。
+
+    Args:
+        start_year: 开始年份。
+        end_year: 结束年份。
+        annual_only: 是否仅包含年报。
+
+    Returns:
+        List[str]: YYYYMMDD 格式的日期字符串列表。
+    """
     dates = []
     for y in range(start_year, end_year + 1):
         if annual_only:
@@ -39,6 +70,20 @@ def _daterange(start_year: int, end_year: int, annual_only: bool) -> List[str]:
 
 
 def _safe_call(ak, func_names: List[str], **kwargs):
+    """安全调用 akshare 函数，支持多个候选函数名。
+
+    Args:
+        ak: akshare 模块。
+        func_names: 候选函数名列表。
+        **kwargs: 传递给函数的参数。
+
+    Returns:
+        Any: 函数返回结果。
+
+    Raises:
+        AttributeError: 如果所有函数都不存在。
+        Exception: 最后一个执行失败的函数抛出的异常。
+    """
     last_exc = None
     for name in func_names:
         if hasattr(ak, name):
@@ -53,6 +98,17 @@ def _safe_call(ak, func_names: List[str], **kwargs):
 
 
 def _get_code_map(ak) -> pd.DataFrame:
+    """获取股票代码和名称的映射表。
+
+    Args:
+        ak: akshare 模块。
+
+    Returns:
+        pd.DataFrame: 包含代码和名称的 DataFrame。
+
+    Raises:
+        RuntimeError: 如果无法获取映射表。
+    """
     try:
         df = _safe_call(ak, ["stock_info_a_code_name"])
         df = df.rename(columns={"code": "代码", "name": "名称"})
@@ -80,6 +136,15 @@ def _get_code_map(ak) -> pd.DataFrame:
 
 
 def _match_codes(code_map: pd.DataFrame, company_names: List[str]) -> Dict[str, str]:
+    """根据公司名称匹配股票代码。
+
+    Args:
+        code_map: 映射表 DataFrame。
+        company_names: 公司名称列表。
+
+    Returns:
+        Dict[str, str]: 公司名称到股票代码的映射字典。
+    """
     mapping: Dict[str, str] = {}
     code_map["名称"] = code_map["名称"].astype(str)
     code_map["代码"] = code_map["代码"].astype(str)
@@ -102,6 +167,15 @@ def _match_codes(code_map: pd.DataFrame, company_names: List[str]) -> Dict[str, 
 
 
 def _filter_targets(df: pd.DataFrame, codes: List[str]) -> pd.DataFrame:
+    """过滤出目标公司的财务数据。
+
+    Args:
+        df: 原始数据 DataFrame。
+        codes: 目标股票代码列表。
+
+    Returns:
+        pd.DataFrame: 过滤后的 DataFrame。
+    """
     if "股票代码" in df.columns:
         key = "股票代码"
     elif "代码" in df.columns:
@@ -112,11 +186,31 @@ def _filter_targets(df: pd.DataFrame, codes: List[str]) -> pd.DataFrame:
 
 
 def _ensure_report_date(df: pd.DataFrame, report_date: str) -> pd.DataFrame:
+    """为数据增加报告日期列。
+
+    Args:
+        df: 数据 DataFrame。
+        report_date: 报告日期。
+
+    Returns:
+        pd.DataFrame: 包含 report_date 列的 DataFrame。
+    """
     df["report_date"] = report_date
     return df
 
 
 def _upsert_table(engine, table: str, df: pd.DataFrame, report_date: str, codes: List[str]) -> None:
+    """更新或插入数据到数据库表中。
+
+    如果表已存在，则先删除相同报告期和相同股票代码的数据，再进行插入。
+
+    Args:
+        engine: 数据库引擎。
+        table: 数据库表名。
+        df: 待插入的数据 DataFrame。
+        report_date: 报告日期。
+        codes: 股票代码列表。
+    """
     if df.empty:
         return
     insp = inspect(engine)
@@ -133,6 +227,7 @@ def _upsert_table(engine, table: str, df: pd.DataFrame, report_date: str, codes:
 
 
 def main() -> None:
+    """脚本入口函数。"""
     parser = argparse.ArgumentParser(description="Load PV company financials from Eastmoney via AkShare into MySQL")
     parser.add_argument(
         "--companies",

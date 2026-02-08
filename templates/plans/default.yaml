@@ -1,0 +1,22 @@
+steps:
+  - name: 数据抽取
+    tool: mysql.query
+    outputs: ["dataset"]
+  - name: 数据清洗
+    tool: dataframe.clean
+    outputs: ["dataset"]
+  - name: 探索性分析
+    tool: dataframe.eda
+    outputs: ["summary"]
+  - name: 统计分析
+    tool: stats.describe
+    outputs: ["summary"]
+  - name: 数据挖掘
+    tool: mining.anomaly
+    outputs: ["summary"]
+  - name: 可视化
+    tool: viz.plotly
+    outputs: ["chart"]
+  - name: 报告生成
+    tool: report.generate
+    outputs: ["report"]

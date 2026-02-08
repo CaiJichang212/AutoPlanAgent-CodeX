@@ -1,0 +1,5 @@
+rules:
+  drop_duplicates: true
+  fillna:
+    amount: 0
+    status: "unknown"

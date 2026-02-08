@@ -1,3 +1,8 @@
+"""检查点恢复功能测试模块。
+
+该模块测试工作流在暂停后通过检查点正确恢复并继续执行的功能。
+"""
+
 from pathlib import Path
 
 import pytest
@@ -7,6 +12,12 @@ from autoplan_agent.workflow import run_graph
 
 
 def test_checkpoint_resume(tmp_path: Path, monkeypatch):
+    """测试工作流通过检查点恢复执行的过程。
+
+    Args:
+        tmp_path: 临时路径对象。
+        monkeypatch: pytest 环境变量修改工具。
+    """
     try:
         import langgraph.checkpoint.sqlite  # noqa: F401
     except Exception:

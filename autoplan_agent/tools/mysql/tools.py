@@ -1,3 +1,8 @@
+"""MySQL 工具集模块。
+
+该模块提供数据库 Schema 查询、SQL 查询执行及查询计划解释 (EXPLAIN) 等功能。
+"""
+
 from __future__ import annotations
 
 import difflib
@@ -27,25 +32,56 @@ from autoplan_agent.tools.mysql.guard import (
 
 
 class SchemaToolInput(BaseModel):
+    """Schema 查询工具输入参数。
+
+    Attributes:
+        tables: 可选的目标表名列表。
+    """
     tables: Optional[List[str]] = None
 
 
 class TableColumn(BaseModel):
+    """表列定义。
+
+    Attributes:
+        name: 列名。
+        type: 数据类型。
+    """
     name: str
     type: str
 
 
 class TableSchema(BaseModel):
+    """表结构定义。
+
+    Attributes:
+        name: 表名。
+        columns: 列定义列表。
+        indexes: 索引名称列表。
+    """
     name: str
     columns: List[TableColumn]
     indexes: List[str] = Field(default_factory=list)
 
 
 class SchemaToolOutput(BaseModel):
+    """Schema 查询工具输出参数。
+
+    Attributes:
+        tables: 表结构列表。
+    """
     tables: List[TableSchema]
 
 
 class QueryToolInput(BaseModel):
+    """SQL 查询工具输入参数。
+
+    Attributes:
+        sql: SQL 查询语句。
+        params: SQL 参数字典。
+        max_rows: 最大返回行数。
+        timeout_s: 超时时间（秒）。
+    """
     sql: str
     params: Optional[Dict[str, Any]] = None
     max_rows: Optional[int] = None
@@ -53,10 +89,24 @@ class QueryToolInput(BaseModel):
 
 
 class ExplainToolInput(BaseModel):
+    """EXPLAIN 工具输入参数。
+
+    Attributes:
+        sql: 待分析的 SQL 语句。
+    """
     sql: str
 
 
 def schema_tool(inputs: SchemaToolInput, context) -> StepResult:
+    """获取数据库表结构信息。
+
+    Args:
+        inputs: 工具输入参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 包含 Schema 信息的执行结果。
+    """
     engine = create_mysql_engine(context.settings)
     insp = inspect(engine)
     table_names = inputs.tables or insp.get_table_names()
@@ -78,6 +128,15 @@ def schema_tool(inputs: SchemaToolInput, context) -> StepResult:
 
 
 def query_tool(inputs: QueryToolInput, context) -> StepResult:
+    """执行安全受限的 SELECT SQL 查询。
+
+    Args:
+        inputs: 工具输入参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 包含查询数据集的执行结果。
+    """
     ensure_select_only(inputs.sql)
     max_rows = inputs.max_rows or context.settings.max_rows_per_query
     sql, enforced = enforce_limit(inputs.sql, max_rows)
@@ -165,6 +224,7 @@ def _dataset_step_result(
     message: str,
     warnings: Optional[list[str]] = None,
 ) -> StepResult:
+    """将 DataFrame 保存为 Artifact 并返回 StepResult。"""
     path, mime = save_dataframe(df, Path(context.run_dir), f"query_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}")
     artifact = Artifact(
         artifact_id=f"artifact_{datetime.utcnow().timestamp()}",
@@ -179,6 +239,15 @@ def _dataset_step_result(
 
 
 def explain_tool(inputs: ExplainToolInput, context) -> StepResult:
+    """对 SQL 语句执行 EXPLAIN 分析。
+
+    Args:
+        inputs: 工具输入参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 包含 EXPLAIN 分析结果的执行结果。
+    """
     ensure_select_only(inputs.sql)
     engine = create_mysql_engine(context.settings)
     df = pd.read_sql(text(f"EXPLAIN {inputs.sql}"), engine)

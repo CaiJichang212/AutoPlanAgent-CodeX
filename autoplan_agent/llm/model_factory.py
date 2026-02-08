@@ -1,3 +1,8 @@
+"""LLM 模型工厂模块。
+
+该模块负责根据配置创建并返回合适的 LLM 实例。
+"""
+
 import json
 import os
 from typing import Any, List
@@ -8,10 +13,25 @@ from autoplan_agent.config import Settings
 
 
 class StaticJsonLLM:
+    """提供静态 JSON 响应的伪造 LLM。"""
+
     def __init__(self, responses: List[str]):
+        """初始化。
+
+        Args:
+            responses: 预设的响应字符串列表。
+        """
         self._responses = responses
 
     def invoke(self, messages: Any) -> AIMessage:
+        """调用伪造 LLM。
+
+        Args:
+            messages: 输入消息。
+
+        Returns:
+            AIMessage: 包含预设内容的 AIMessage 对象。
+        """
         if self._responses:
             content = self._responses.pop(0)
         else:
@@ -20,6 +40,11 @@ class StaticJsonLLM:
 
 
 def _load_utils():
+    """尝试加载项目根目录下的 utils 模块。
+
+    Returns:
+        module: utils 模块，如果加载失败则返回 None。
+    """
     try:
         import utils  # type: ignore
 
@@ -29,6 +54,17 @@ def _load_utils():
 
 
 def get_llm(settings: Settings):
+    """获取配置好的 LLM 实例。
+
+    Args:
+        settings: 应用配置。
+
+    Returns:
+        LLM: 适配后的 LLM 实例。
+
+    Raises:
+        RuntimeError: 如果未配置有效的 LLM。
+    """
     if settings.llm_fake:
         raw = os.getenv("LLM_FAKE_JSON", "{}")
         try:

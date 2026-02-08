@@ -1,1 +1,1 @@
-# Schemas package
+"""数据模型定义包。"""

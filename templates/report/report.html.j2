@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>数据分析检测报告</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    h1, h2 { color: #1f2d3d; }
+    .section { margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+  <h1>数据分析检测报告</h1>
+  <div class="section">
+    <h2>执行摘要</h2>
+    <p>{{ summary }}</p>
+  </div>
+  <div class="section">
+    <h2>任务背景与目标</h2>
+    <p>{{ understanding.analysis_goal }}</p>
+  </div>
+  <div class="section">
+    <h2>数据来源与抽取口径</h2>
+    <p>{{ data_sources }}</p>
+  </div>
+  <div class="section">
+    <h2>数据质量与清洗</h2>
+    <p>{{ data_quality }}</p>
+  </div>
+  <div class="section">
+    <h2>分析方法</h2>
+    <p>{{ methods }}</p>
+  </div>
+  <div class="section">
+    <h2>关键发现</h2>
+    <p>{{ findings }}</p>
+  </div>
+  <div class="section">
+    <h2>业务建议</h2>
+    <p>{{ recommendations }}</p>
+  </div>
+  <div class="section">
+    <h2>附录</h2>
+    <p>{{ appendix }}</p>
+  </div>
+</body>
+</html>

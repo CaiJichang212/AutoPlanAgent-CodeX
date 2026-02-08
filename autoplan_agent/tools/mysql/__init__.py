@@ -1,1 +1,1 @@
-# MySQL tools
+"""MySQL 数据库工具包。"""

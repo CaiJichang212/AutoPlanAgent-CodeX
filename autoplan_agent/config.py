@@ -1,3 +1,8 @@
+"""配置管理模块。
+
+该模块定义了应用的所有配置项，通过 Pydantic BaseSettings 支持环境变量。
+"""
+
 from pathlib import Path
 from urllib.parse import urlparse
 from pydantic import Field
@@ -5,6 +10,41 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """应用全局设置类。
+
+    Attributes:
+        model: LLM 模型名称。
+        model_base_url: LLM API 基础 URL。
+        llm_fake: 是否使用伪造的 LLM。
+        runs_dir: 运行结果存储目录。
+        logs_dir: 日志存储目录。
+        templates_dir: 模板存储目录。
+        plugins_dir: 插件存储目录。
+        max_rows_per_query: 每个查询的最大行数。
+        query_timeout_s: 查询超时时间（秒）。
+        default_limit: 默认查询限制。
+        enable_explain: 是否启用 EXPLAIN。
+        agent_api_key: 代理 API Key。
+        mysql_url: MySQL 连接 URL。
+        mysql_host: MySQL 主机名。
+        mysql_port: MySQL 端口号。
+        mysql_user: MySQL 用户名。
+        mysql_password: MySQL 密码。
+        mysql_db: MySQL 数据库名。
+        mysql_ssl_ca: MySQL SSL CA。
+        mysql_ssl_cert: MySQL SSL 证书。
+        mysql_ssl_key: MySQL SSL 密钥。
+        mysql_connect_timeout_s: MySQL 连接超时时间（秒）。
+        mysql_read_timeout_s: MySQL 读取超时时间（秒）。
+        mysql_write_timeout_s: MySQL 写入超时时间（秒）。
+        mysql_pool_recycle_s: MySQL 连接池回收时间（秒）。
+        mysql_pool_size: MySQL 连接池大小。
+        mysql_max_overflow: MySQL 连接池最大溢出。
+        mysql_query_retries: MySQL 查询重试次数。
+        mysql_query_backoff_s: MySQL 查询重试退避时间（秒）。
+        pdf_backend: PDF 生成后端。
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -49,6 +89,11 @@ class Settings(BaseSettings):
     pdf_backend: str = Field(default="weasyprint", alias="PDF_BACKEND")
 
     def mysql_dsn(self) -> str | None:
+        """生成 MySQL DSN 连接字符串。
+
+        Returns:
+            str | None: MySQL DSN 字符串，如果配置不完整则返回 None。
+        """
         if self.mysql_url:
             try:
                 parsed = urlparse(self.mysql_url)

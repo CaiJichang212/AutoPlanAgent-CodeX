@@ -1,9 +1,16 @@
 
+"""数据库缺失表修复和模拟数据初始化脚本。
+
+该脚本用于创建 stock_prices 表，并为指定的公司填充 2018-2023 年的季度财务模拟数据。
+"""
+
 import os
 from sqlalchemy import create_engine, text
 from autoplan_agent.config import Settings
 
+
 def main():
+    """执行数据库表修复和数据填充。"""
     settings = Settings()
     dsn = settings.mysql_dsn()
     if not dsn:
@@ -99,5 +106,6 @@ def main():
         conn.commit()
     print(f"Inserted comprehensive dummy data for {len(companies)} companies across 2018-2023.")
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

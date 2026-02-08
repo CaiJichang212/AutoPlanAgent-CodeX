@@ -1,3 +1,8 @@
+"""Pytest 测试配置模块。
+
+该模块将项目根目录添加到系统路径，确保测试可以正确导入项目包。
+"""
+
 import sys
 from pathlib import Path
 

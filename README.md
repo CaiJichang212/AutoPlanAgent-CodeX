@@ -19,37 +19,40 @@
 
 ```text
 .
-├── api/                # FastAPI 服务入口及路由定义 (health, runs)
+├── api/                # FastAPI 服务入口及路由定义
+│   └── routers/        # 业务路由 (health, runs)
 ├── autoplan_agent/     # 核心逻辑框架
-│   ├── llm/            # LLM 适配、Jinja2 提示词模板与 JSON 解析
-│   ├── schemas/        # Pydantic 统一数据模型 (API, Plan, Artifacts等)
+│   ├── llm/            # LLM 适配、Jinja2 提示词模板与运行时
+│   ├── schemas/        # Pydantic 统一数据模型 (Plan, Artifacts等)
 │   ├── storage/        # 运行数据持久化 (RunStore) 与 LangGraph Checkpoint
-│   ├── tools/          # 内置工具箱（MySQL, DF处理, 统计, 可视化, 报告）
-│   ├── config.py       # 基于 Pydantic Settings 的全局配置
+│   ├── tools/          # 内置工具箱（MySQL, DF处理, 统计, 可视化, 报告, 智能挖掘）
+│   ├── config.py       # 全局配置 (Pydantic Settings)
 │   ├── executor.py     # 计划执行引擎
-│   ├── workflow.py     # LangGraph 状态机编排
-│   └── logging_.py     # 日志统一配置
+│   └── workflow.py     # LangGraph 状态机编排
 ├── cli/                # Typer 命令行入口
-├── scripts/            # 辅助脚本（数据加载、状态检查、报告重算）
-├── templates/          # 模板库 (Plans YAML, Jinja2 Reports, Business Rules)
-├── tests/              # 单元测试与集成测试
-├── main.py             # 快速启动入口（CLI 代理）
-└── utils.py            # 工具函数（如模型初始化适配）
+├── docker/             # Docker 部署配置 (Dockerfile, Compose)
+├── scripts/            # 辅助脚本（数据加载、环境验证等）
+├── templates/          # 模板库 (Plan YAML, Jinja2 Reports)
+├── tests/              # 自动化测试用例
+├── main.py             # CLI 快捷入口
+└── pyproject.toml      # 项目元数据与依赖管理
 ```
 
 ## 🚀 快速开始
 
 ### 1. 环境准备
 
-推荐使用 [uv](https://github.com/astral-sh/uv) 或 `pip` 管理环境：
+推荐使用 [uv](https://github.com/astral-sh/uv) 管理环境（速度极快）：
 
 ```bash
-# 使用 uv
-uv venv
+# 自动创建并安装依赖
+uv sync --all-extras
 source .venv/bin/activate
-uv pip install -e .[dev,data]
+```
 
-# 或使用传统 pip
+或使用传统 `pip`：
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev,data]
@@ -64,25 +67,27 @@ cp .env.example .env
 ```
 
 **关键配置项：**
-- `MODEL`: LLM 模型名称 (默认 Qwen3-30B 系列)
+
+- `MODEL`: LLM 模型名称 (例如 `Qwen/Qwen3-30B-A3B-Instruct-2507`)
 - `MODEL_BASE_URL`: OpenAI 兼容的 API 地址
 - `OPENAI_API_KEY`: API 密钥
 - `MYSQL_URL`: 数据库连接串（例如 `mysql+pymysql://user:pass@host:3306/db`）
-- `AGENT_API_KEY`: API 服务鉴权密钥 (可选)
 - `RUNS_DIR`: 运行产物存储目录 (默认 `./runs`)
 - `LLM_FAKE=1`: 开启离线模拟模式（无需真实 LLM）
+- `PDF_BACKEND`: PDF 渲染后端 (默认 `weasyprint`)
+- `ENABLE_EXPLAIN`: 是否开启 SQL 执行计划分析 (默认 `True`)
 
 ### 3. 运行方式
 
 #### A. 命令行交互 (CLI)
 ```bash
-# 启动交互式分析任务 (包含 理解 -> 确认 -> 执行 -> 报告 全流程)
+# 启动交互式分析任务
 autoplan-agent run "分析过去30天订单退款率异常的原因"
 
 # 继续执行中断的任务 (基于 run_id)
 autoplan-agent resume <run_id>
 
-# 仅查看/生成报告
+# 查看/重新生成报告
 autoplan-agent report <run_id> --fmt pdf
 ```
 
@@ -91,11 +96,17 @@ autoplan-agent report <run_id> --fmt pdf
 # 启动服务
 autoplan-agent serve --port 8000
 
-# API 调用示例：创建任务 (若配置了 AGENT_API_KEY，请添加 X-API-Key Header)
+# API 调用示例
 curl -X POST http://localhost:8000/v1/runs \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your_key_here" \
-  -d '{"user_task":"分析近期支付失败率情况", "template_id": "default"}'
+  -d '{"user_task":"分析近期支付失败率情况"}'
+```
+
+#### C. Docker 部署
+```bash
+# 一键启动 MySQL 演示库与 Agent 服务
+cd docker
+docker-compose up -d
 ```
 
 ## 🛠️ 核心工作流

@@ -1,3 +1,9 @@
+"""通用工具函数和模型适配器模块。
+
+提供日志设置、LLM 模型加载（ModelScope、SiliconFlow）、文本处理（Markdown 转纯文本）
+以及 Embeddings 适配器等功能。
+"""
+
 import json
 import logging
 import os
@@ -32,8 +38,20 @@ SiliconFlow_API_KEY_LIST = os.getenv("SILICONFLOW_API_KEYS", "").split(",")
 # 过滤掉空字符串
 SiliconFlow_API_KEY_LIST = [key for key in SiliconFlow_API_KEY_LIST if key]
 
+
 def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None, level=logging.INFO, console_output: bool = True, clear_existing: bool = False):
-    """设置 Logger，支持输出到控制台和文件"""
+    """设置 Logger，支持输出到控制台和文件。
+
+    Args:
+        name: Logger 名称。
+        log_file: 日志文件路径。
+        level: 日志级别。
+        console_output: 是否输出到控制台。
+        clear_existing: 是否清除现有的 Handler。
+
+    Returns:
+        logging.Logger: 配置好的 Logger 对象。
+    """
     # 如果没有提供名字，或者名字为空，则配置根日志记录器
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -65,6 +83,14 @@ def setup_logger(name: Optional[str] = None, log_file: Optional[str] = None, lev
     return logger
 
 def _normalize_base_url(base_url: Optional[str]) -> Optional[str]:
+    """标准化 API 基础 URL，确保以斜杠结尾。
+
+    Args:
+        base_url: 基础 URL。
+
+    Returns:
+        Optional[str]: 标准化后的 URL。
+    """
     if not base_url:
         return base_url
     # Most LangChain OpenAI-compatible clients expect a trailing slash, e.g. ".../v1/".
@@ -78,6 +104,18 @@ def get_model_from_name(
     late_time: float = 3.0,
     **kwargs,
 ):
+    """根据模型名称获取对应的 LLM 对象。
+
+    Args:
+        model: 模型名称。
+        api_key: API 密钥。
+        base_url: 基础 URL。
+        late_time: 延迟时间。
+        **kwargs: 其他参数。
+
+    Returns:
+        BaseChatModel: LLM 模型对象。
+    """
     if "instruct" in model.lower():
         return llm_qwen(model=model, api_key=api_key, base_url=base_url, late_time=late_time, **kwargs)
     elif "thinking" in model.lower():
@@ -85,12 +123,28 @@ def get_model_from_name(
     else:
         return llm_modelscope(model=model, api_key=api_key, base_url=base_url, late_time=late_time, **kwargs)
 
+
 def llm_qwq(model: str = MODEL,
     api_key: Optional[str] = None,
     base_url: Optional[str] = None,
     late_time: float = 3.0,
     **kwargs,
 ):
+    """获取 QwQ 思考模型。
+
+    Args:
+        model: 模型名称。
+        api_key: API 密钥。
+        base_url: 基础 URL。
+        late_time: 延迟时间。
+        **kwargs: 其他参数。
+
+    Returns:
+        ChatQwQ: QwQ 模型对象。
+
+    Raises:
+        RuntimeError: 如果缺少依赖包。
+    """
     if ChatQwQ is None:
         raise RuntimeError("Missing dependency: langchain-qwq. Install with pip install -e .[qwq]")
     if not api_key:
@@ -117,6 +171,21 @@ def llm_qwen(
     late_time: float = 3.0,
     **kwargs,
 ):
+    """获取 Qwen 模型。
+
+    Args:
+        model: 模型名称。
+        api_key: API 密钥。
+        base_url: 基础 URL。
+        late_time: 延迟时间。
+        **kwargs: 其他参数。
+
+    Returns:
+        ChatQwen: Qwen 模型对象。
+
+    Raises:
+        RuntimeError: 如果缺少依赖包。
+    """
     if ChatQwen is None:
         raise RuntimeError("Missing dependency: langchain-qwq. Install with pip install -e .[qwq]")
     if not api_key:
@@ -139,6 +208,7 @@ def llm_qwen(
     
     return model_think
 
+
 def llm_modelscope(
     model: str = MODEL,
     api_key: Optional[str] = None,
@@ -146,6 +216,18 @@ def llm_modelscope(
     late_time: float = 3.0,
     **kwargs,
 ):
+    """获取 ModelScope 托管的 OpenAI 兼容模型。
+
+    Args:
+        model: 模型名称。
+        api_key: API 密钥。
+        base_url: 基础 URL。
+        late_time: 延迟时间。
+        **kwargs: 其他参数。
+
+    Returns:
+        ChatOpenAI: 模型对象。
+    """
     if not api_key:
         api_key = random.choice(MODELSCOPE_API_KEY_LIST)
     if not base_url:
@@ -162,6 +244,7 @@ def llm_modelscope(
     
     return llm
 
+
 def llm_siliconflow(
     model: str = MODEL,
     api_key: Optional[str] = None,
@@ -169,6 +252,18 @@ def llm_siliconflow(
     late_time: float = 3.0,
     **kwargs,
 ):
+    """获取 SiliconFlow 托管的 OpenAI 兼容模型。
+
+    Args:
+        model: 模型名称。
+        api_key: API 密钥。
+        base_url: 基础 URL。
+        late_time: 延迟时间。
+        **kwargs: 其他参数。
+
+    Returns:
+        ChatOpenAI: 模型对象。
+    """
     if not api_key:
         api_key = random.choice(SiliconFlow_API_KEY_LIST)
     if not base_url:
@@ -187,15 +282,15 @@ def llm_siliconflow(
 
 import re
 
+
 def md2txt(md_text: str) -> str:
-    """
-    将Markdown文本转换为纯文本
-    
+    """将 Markdown 文本转换为纯文本。
+
     Args:
-        md_text: 包含Markdown格式的文本
-        
+        md_text: 包含 Markdown 格式的文本。
+
     Returns:
-        转换后的纯文本
+        str: 转换后的纯文本。
     """
     # 移除代码块 (```code```)
     plain_text = re.sub(r'```.*?```', '', md_text, flags=re.DOTALL)
@@ -241,7 +336,14 @@ def md2txt(md_text: str) -> str:
 
 
 class SiliconFlowEmbeddings(BaseModel, Embeddings):
-    """硅基流动词向量模型适配器"""
+    """硅基流动词向量模型适配器。
+
+    Attributes:
+        model: 要使用的模型名称。
+        api_key: API 密钥。
+        base_url: API 的基础 URL。
+        batch_size: 每批处理的文本数量。
+    """
     
     model: str = Field(default="BAAI/bge-m3", description="要使用的模型名称")
     api_key: Optional[str] = Field(default=None, description="API密钥")
@@ -249,13 +351,28 @@ class SiliconFlowEmbeddings(BaseModel, Embeddings):
     batch_size: int = Field(default=4, description="每批处理的文本数量")
     
     def get_api_key(self):
+        """随机获取一个 API 密钥。
+
+        Returns:
+            str: API 密钥。
+        """
         if not self.api_key:
             self.api_key = random.choice(SiliconFlow_API_KEY_LIST)
         
         return self.api_key
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """为多个文本生成嵌入向量，支持批量处理"""
+        """为多个文本生成嵌入向量，支持批量处理。
+
+        Args:
+            texts: 文本列表。
+
+        Returns:
+            List[List[float]]: 嵌入向量列表。
+
+        Raises:
+            Exception: 如果 API 请求出错。
+        """
         all_embeddings = []
         
         # 分批处理文本
@@ -297,6 +414,12 @@ class SiliconFlowEmbeddings(BaseModel, Embeddings):
         return all_embeddings
     
     def embed_query(self, text: str) -> List[float]:
-        """为单个文本生成嵌入向量"""
-        # 对于单个文本，我们仍然使用embed_documents方法
+        """为单个文本生成嵌入向量。
+
+        Args:
+            text: 输入文本。
+
+        Returns:
+            List[float]: 嵌入向量。
+        """
         return self.embed_documents([text])[0]

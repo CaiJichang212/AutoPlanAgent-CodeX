@@ -1,1 +1,1 @@
-# Namespace package for API
+"""API 命名空间包。"""

@@ -1,3 +1,8 @@
+"""运行管理路由模块。
+
+该模块提供任务运行的创建、确认、执行和状态查询等接口。
+"""
+
 from pathlib import Path
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import FileResponse
@@ -19,6 +24,11 @@ router = APIRouter()
 
 
 def get_settings() -> Settings:
+    """获取应用配置。
+
+    Returns:
+        Settings: 应用配置对象。
+    """
     return Settings()
 
 
@@ -26,6 +36,15 @@ def require_api_key(
     settings: Settings = Depends(get_settings),
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
 ):
+    """验证 API Key。
+
+    Args:
+        settings: 应用配置。
+        x_api_key: 请求头中的 API Key。
+
+    Raises:
+        HTTPException: 如果 API Key 无效。
+    """
     if settings.agent_api_key:
         if not x_api_key or x_api_key != settings.agent_api_key:
             raise HTTPException(status_code=401, detail="Invalid API key")
@@ -33,6 +52,15 @@ def require_api_key(
 
 @router.post("/runs", response_model=RunCreateResponse, dependencies=[Depends(require_api_key)])
 def create_run(payload: RunCreateRequest, settings: Settings = Depends(get_settings)):
+    """创建新的任务运行。
+
+    Args:
+        payload: 创建请求负载。
+        settings: 应用配置。
+
+    Returns:
+        RunCreateResponse: 创建成功的响应。
+    """
     run_id = new_run_id()
     run_path = init_run(settings.runs_dir, run_id)
     result = run_graph(
@@ -62,6 +90,16 @@ def create_run(payload: RunCreateRequest, settings: Settings = Depends(get_setti
 
 @router.post("/runs/{run_id}/confirm", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
 def confirm_run(run_id: str, payload: RunConfirmRequest, settings: Settings = Depends(get_settings)):
+    """确认或提供任务运行的反馈。
+
+    Args:
+        run_id: 运行 ID。
+        payload: 确认请求负载。
+        settings: 应用配置。
+
+    Returns:
+        RunStatusResponse: 运行状态响应。
+    """
     run_path = init_run(settings.runs_dir, run_id)
     result = run_graph(
         {
@@ -91,6 +129,15 @@ def confirm_run(run_id: str, payload: RunConfirmRequest, settings: Settings = De
 
 @router.post("/runs/{run_id}/execute", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
 def execute_run(run_id: str, settings: Settings = Depends(get_settings)):
+    """直接执行任务运行。
+
+    Args:
+        run_id: 运行 ID。
+        settings: 应用配置。
+
+    Returns:
+        RunStatusResponse: 运行状态响应。
+    """
     run_path = init_run(settings.runs_dir, run_id)
     result = run_graph({"run_id": run_id, "approved": True}, settings)
     meta = {
@@ -112,6 +159,15 @@ def execute_run(run_id: str, settings: Settings = Depends(get_settings)):
 
 @router.get("/runs/{run_id}", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
 def get_run(run_id: str, settings: Settings = Depends(get_settings)):
+    """获取任务运行的状态。
+
+    Args:
+        run_id: 运行 ID。
+        settings: 应用配置。
+
+    Returns:
+        RunStatusResponse: 运行状态响应。
+    """
     run_path = Path(settings.runs_dir) / run_id
     meta = load_meta(run_path)
     understanding = TaskUnderstandingReport(**meta["understanding"]) if meta.get("understanding") else None
@@ -128,6 +184,19 @@ def get_run(run_id: str, settings: Settings = Depends(get_settings)):
 
 @router.get("/runs/{run_id}/report", dependencies=[Depends(require_api_key)])
 def get_report(run_id: str, format: str = "pdf", settings: Settings = Depends(get_settings)):
+    """获取任务运行生成的报告。
+
+    Args:
+        run_id: 运行 ID。
+        format: 报告格式（pdf 或 html）。
+        settings: 应用配置。
+
+    Returns:
+        FileResponse: 报告文件响应。
+
+    Raises:
+        HTTPException: 如果报告不存在。
+    """
     report_path = Path(settings.runs_dir) / run_id / "artifacts" / f"report.{format}"
     if not report_path.exists():
         raise HTTPException(status_code=404, detail="Report not found")

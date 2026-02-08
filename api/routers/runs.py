@@ -1,0 +1,134 @@
+from pathlib import Path
+from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import FileResponse
+
+from autoplan_agent.config import Settings
+from autoplan_agent.ids import new_run_id
+from autoplan_agent.schemas.api import (
+    RunCreateRequest,
+    RunCreateResponse,
+    RunConfirmRequest,
+    RunStatusResponse,
+)
+from autoplan_agent.schemas.understanding import TaskUnderstandingReport
+from autoplan_agent.schemas.plan import ExecutionPlan
+from autoplan_agent.storage.run_store import init_run, save_meta, load_meta
+from autoplan_agent.workflow import run_graph
+
+router = APIRouter()
+
+
+def get_settings() -> Settings:
+    return Settings()
+
+
+def require_api_key(
+    settings: Settings = Depends(get_settings),
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+):
+    if settings.agent_api_key:
+        if not x_api_key or x_api_key != settings.agent_api_key:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+
+@router.post("/runs", response_model=RunCreateResponse, dependencies=[Depends(require_api_key)])
+def create_run(payload: RunCreateRequest, settings: Settings = Depends(get_settings)):
+    run_id = new_run_id()
+    run_path = init_run(settings.runs_dir, run_id)
+    result = run_graph(
+        {
+            "run_id": run_id,
+            "user_task": payload.user_task,
+            "approved": False,
+            "template_id": payload.template_id or "default",
+        },
+        settings,
+    )
+    meta = {
+        "run_id": run_id,
+        "status": result.get("status", "NEEDS_CONFIRMATION"),
+        "understanding": result.get("understanding").model_dump() if result.get("understanding") else None,
+        "plan": result.get("plan").model_dump() if result.get("plan") else None,
+    }
+    save_meta(run_path, meta)
+    return RunCreateResponse(
+        run_id=run_id,
+        status=meta["status"],
+        understanding=result.get("understanding"),
+        plan=result.get("plan"),
+        open_questions=(result.get("understanding").open_questions if result.get("understanding") else []),
+    )
+
+
+@router.post("/runs/{run_id}/confirm", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
+def confirm_run(run_id: str, payload: RunConfirmRequest, settings: Settings = Depends(get_settings)):
+    run_path = init_run(settings.runs_dir, run_id)
+    result = run_graph(
+        {
+            "run_id": run_id,
+            "approved": payload.approved,
+            "feedback": payload.feedback,
+            "patch_understanding": payload.patch_understanding,
+        },
+        settings,
+    )
+    meta = {
+        "run_id": run_id,
+        "status": result.get("status", "NEEDS_CONFIRMATION"),
+        "understanding": result.get("understanding").model_dump() if result.get("understanding") else None,
+        "plan": result.get("plan").model_dump() if result.get("plan") else None,
+    }
+    save_meta(run_path, meta)
+    return RunStatusResponse(
+        run_id=run_id,
+        status=meta["status"],
+        understanding=result.get("understanding"),
+        plan=result.get("plan"),
+        artifacts=result.get("artifacts", []),
+        message=result.get("message"),
+    )
+
+
+@router.post("/runs/{run_id}/execute", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
+def execute_run(run_id: str, settings: Settings = Depends(get_settings)):
+    run_path = init_run(settings.runs_dir, run_id)
+    result = run_graph({"run_id": run_id, "approved": True}, settings)
+    meta = {
+        "run_id": run_id,
+        "status": result.get("status", "NEEDS_CONFIRMATION"),
+        "understanding": result.get("understanding").model_dump() if result.get("understanding") else None,
+        "plan": result.get("plan").model_dump() if result.get("plan") else None,
+    }
+    save_meta(run_path, meta)
+    return RunStatusResponse(
+        run_id=run_id,
+        status=meta["status"],
+        understanding=result.get("understanding"),
+        plan=result.get("plan"),
+        artifacts=result.get("artifacts", []),
+        message=result.get("message"),
+    )
+
+
+@router.get("/runs/{run_id}", response_model=RunStatusResponse, dependencies=[Depends(require_api_key)])
+def get_run(run_id: str, settings: Settings = Depends(get_settings)):
+    run_path = Path(settings.runs_dir) / run_id
+    meta = load_meta(run_path)
+    understanding = TaskUnderstandingReport(**meta["understanding"]) if meta.get("understanding") else None
+    plan = ExecutionPlan(**meta["plan"]) if meta.get("plan") else None
+    return RunStatusResponse(
+        run_id=run_id,
+        status=meta.get("status", "UNKNOWN"),
+        understanding=understanding,
+        plan=plan,
+        artifacts=[],
+        message=None,
+    )
+
+
+@router.get("/runs/{run_id}/report", dependencies=[Depends(require_api_key)])
+def get_report(run_id: str, format: str = "pdf", settings: Settings = Depends(get_settings)):
+    report_path = Path(settings.runs_dir) / run_id / "artifacts" / f"report.{format}"
+    if not report_path.exists():
+        raise HTTPException(status_code=404, detail="Report not found")
+    return FileResponse(report_path)

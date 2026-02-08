@@ -1,3 +1,8 @@
+"""内置工具模块。
+
+该模块提供了一系列内置的数据处理、统计分析、挖掘、可视化和报告生成工具。
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -23,24 +28,51 @@ from autoplan_agent.tools.report.pdf import get_pdf_backend
 
 
 class DataframeInput(BaseModel):
+    """数据框输入基础模型。
+
+    Attributes:
+        dataset_path: 数据集文件路径。
+    """
     dataset_path: str
 
 
 class CleanInput(DataframeInput):
+    """数据清洗工具输入模型。
+
+    Attributes:
+        rules: 清洗规则字典。
+    """
     rules: Dict[str, Any] | None = None
 
 
 class EDAInput(DataframeInput):
+    """EDA 工具输入模型。"""
     pass
 
 
 class StatsInput(DataframeInput):
+    """统计分析工具输入模型。
+
+    Attributes:
+        method: 统计方法（如 describe, correlation, t_test, chi_square）。
+        col_a: 第一个列名。
+        col_b: 第二个列名。
+    """
     method: str = "describe"
     col_a: Optional[str] = None
     col_b: Optional[str] = None
 
 
 class MiningInput(DataframeInput):
+    """数据挖掘工具输入模型。
+
+    Attributes:
+        method: 挖掘方法（如 iqr, isolation_forest, trend）。
+        column: 目标列名。
+        columns: 目标列名列表。
+        time_col: 时间列名。
+        value_col: 数值列名。
+    """
     method: str = "iqr"
     column: Optional[str] = None
     columns: Optional[list[str]] = None
@@ -49,12 +81,31 @@ class MiningInput(DataframeInput):
 
 
 class VizInput(DataframeInput):
+    """可视化工具输入模型。
+
+    Attributes:
+        spec: 可视化规范字典。
+        charts: 图表配置列表。
+        backend: 可视化后端（plotly 或 mpl）。
+    """
     spec: Dict[str, Any] | None = None
     charts: list[Dict[str, Any] | str] | None = None
     backend: str = "plotly"
 
 
 class ReportInput(BaseModel):
+    """报告生成工具输入模型。
+
+    Attributes:
+        summary: 摘要内容。
+        findings: 发现内容。
+        recommendations: 建议内容。
+        data_sources: 数据来源。
+        data_quality: 数据质量说明。
+        methods: 分析方法。
+        appendix: 附录内容。
+        understanding: 任务理解对象。
+    """
     summary: str
     findings: str
     recommendations: str
@@ -66,6 +117,16 @@ class ReportInput(BaseModel):
 
 
 def _load_df(path: str) -> pd.DataFrame:
+    """从路径加载 DataFrame。
+
+    支持 CSV 和 Parquet 格式。
+
+    Args:
+        path: 文件路径。
+
+    Returns:
+        pd.DataFrame: 加载的数据框。
+    """
     p = Path(path)
     if p.suffix == ".parquet":
         return pd.read_parquet(p)
@@ -73,6 +134,15 @@ def _load_df(path: str) -> pd.DataFrame:
 
 
 def dataframe_clean(inputs: CleanInput, context) -> StepResult:
+    """数据清洗工具。
+
+    Args:
+        inputs: 清洗参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含清洗后的数据集产物。
+    """
     df = _load_df(inputs.dataset_path)
     cleaned = clean_dataframe(df, inputs.rules)
     path, mime = save_dataframe(cleaned, Path(context.run_dir), "cleaned")
@@ -89,6 +159,15 @@ def dataframe_clean(inputs: CleanInput, context) -> StepResult:
 
 
 def dataframe_eda(inputs: EDAInput, context) -> StepResult:
+    """探索性数据分析 (EDA) 工具。
+
+    Args:
+        inputs: EDA 参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含 EDA 摘要产物。
+    """
     df = _load_df(inputs.dataset_path)
     if df.empty:
         return StepResult(success=False, message=f"Dataset at {inputs.dataset_path} is empty. Cannot perform EDA.")
@@ -106,6 +185,15 @@ def dataframe_eda(inputs: EDAInput, context) -> StepResult:
 
 
 def stats_tool(inputs: StatsInput, context) -> StepResult:
+    """统计分析工具。
+
+    Args:
+        inputs: 统计分析参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含统计分析结果产物。
+    """
     df = _load_df(inputs.dataset_path)
     if df.empty:
         return StepResult(success=False, message=f"Dataset at {inputs.dataset_path} is empty. Cannot perform statistical analysis.")
@@ -135,6 +223,15 @@ def stats_tool(inputs: StatsInput, context) -> StepResult:
 
 
 def mining_tool(inputs: MiningInput, context) -> StepResult:
+    """数据挖掘工具。
+
+    Args:
+        inputs: 数据挖掘参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含挖掘出的发现或异常。
+    """
     df = _load_df(inputs.dataset_path)
     result: Dict[str, Any] = {}
     
@@ -179,6 +276,15 @@ def mining_tool(inputs: MiningInput, context) -> StepResult:
 
 
 def viz_tool(inputs: VizInput, context) -> StepResult:
+    """数据可视化工具。
+
+    Args:
+        inputs: 可视化参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含生成的图表产物。
+    """
     df = _load_df(inputs.dataset_path)
     if df.empty:
         return StepResult(
@@ -260,6 +366,15 @@ def viz_tool(inputs: VizInput, context) -> StepResult:
 
 
 def report_tool(inputs: ReportInput, context) -> StepResult:
+    """报告生成工具。
+
+    Args:
+        inputs: 报告内容参数。
+        context: 工具执行上下文。
+
+    Returns:
+        StepResult: 执行结果，包含 Markdown、HTML 和 PDF 报告产物。
+    """
     run_dir = Path(context.run_dir)
     templates_dir = Path(context.settings.templates_dir) / "report"
     md_path = run_dir / "artifacts" / "report.md"

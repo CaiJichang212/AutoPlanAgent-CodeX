@@ -1,9 +1,25 @@
+"""数据清洗工具模块。
+
+该模块提供 DataFrame 的数值转换和通用清洗功能。
+"""
+
 from typing import Dict, Any
 
 import pandas as pd
 
 
 def coerce_numeric_columns(df: pd.DataFrame, columns: list[str] | None = None) -> pd.DataFrame:
+    """尝试将列转换为数值类型。
+
+    支持处理包含中文单位（如“万”、“亿”）和逗号、百分号的字符串。
+
+    Args:
+        df: 待处理的数据框。
+        columns: 目标列名列表，如果为 None 则处理所有列。
+
+    Returns:
+        pd.DataFrame: 转换后的数据框。
+    """
     df = df.copy()
     targets = columns or df.columns.tolist()
     for col in targets:
@@ -51,6 +67,15 @@ def coerce_numeric_columns(df: pd.DataFrame, columns: list[str] | None = None) -
 
 
 def clean_dataframe(df: pd.DataFrame, rules: Dict[str, Any] | None = None) -> pd.DataFrame:
+    """根据规则清洗 DataFrame。
+
+    Args:
+        df: 待清洗的数据框。
+        rules: 清洗规则字典，支持 drop_duplicates, fillna, dropna 等。
+
+    Returns:
+        pd.DataFrame: 清洗后的数据框。
+    """
     rules = rules or {}
     if df.empty:
         return df
@@ -62,6 +87,7 @@ def clean_dataframe(df: pd.DataFrame, rules: Dict[str, Any] | None = None) -> pd
         subset = rules.get("duplicate_subset")
         df = df.drop_duplicates(subset=subset)
 
+    # 2. Coerce numeric
     df = coerce_numeric_columns(df)
 
     # 3. Fill missing values

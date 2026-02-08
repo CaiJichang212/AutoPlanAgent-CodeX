@@ -1,4 +1,9 @@
 
+"""报告重新生成脚本。
+
+该脚本用于根据指定的运行 ID，从检查点恢复状态并重新生成数据分析报告。
+"""
+
 import sys
 from pathlib import Path
 
@@ -14,7 +19,13 @@ from autoplan_agent.llm.model_factory import get_llm
 from autoplan_agent.tools.registry import ToolContext
 import logging
 
+
 def regenerate_report(run_id: str):
+    """为指定的运行 ID 重新生成报告。
+
+    Args:
+        run_id: 运行 ID。
+    """
     settings = Settings()
     run_path = settings.runs_dir / run_id
     if not run_path.exists():
@@ -56,6 +67,7 @@ def regenerate_report(run_id: str):
             print(f"  - {art.path} ({art.description})")
     else:
         print(f"Failed to regenerate report: {result.message}")
+
 
 if __name__ == "__main__":
     run_id = "run_6bb4f56b6a2e"

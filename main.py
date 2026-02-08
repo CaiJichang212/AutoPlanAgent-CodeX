@@ -1,3 +1,8 @@
+"""项目主入口模块。
+
+提供命令行界面，支持启动 API 服务、运行任务、恢复任务执行以及查看生成的报告。
+"""
+
 import argparse
 import json
 from pathlib import Path
@@ -11,10 +16,20 @@ from autoplan_agent.workflow import run_graph
 
 
 def cmd_serve(args: argparse.Namespace) -> None:
+    """启动 FastAPI 服务。
+
+    Args:
+        args: 命令行参数。
+    """
     uvicorn.run("api.main:app", host=args.host, port=args.port, reload=False)
 
 
 def cmd_run(args: argparse.Namespace) -> None:
+    """运行新任务，支持交互式确认。
+
+    Args:
+        args: 命令行参数。
+    """
     settings = Settings()
     run_id = new_run_id()
     run_path = init_run(settings.runs_dir, run_id)
@@ -59,12 +74,22 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 
 def cmd_resume(args: argparse.Namespace) -> None:
+    """根据运行 ID 恢复执行。
+
+    Args:
+        args: 命令行参数。
+    """
     settings = Settings()
     result = run_graph({"run_id": args.run_id, "approved": True}, settings)
     print(f"执行完成，状态: {result.get('status')}")
 
 
 def cmd_report(args: argparse.Namespace) -> None:
+    """获取指定运行 ID 的报告路径。
+
+    Args:
+        args: 命令行参数。
+    """
     settings = Settings()
     path = Path(settings.runs_dir) / args.run_id / "artifacts" / f"report.{args.fmt}"
     if not path.exists():
@@ -73,6 +98,11 @@ def cmd_report(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """构建命令行参数解析器。
+
+    Returns:
+        argparse.ArgumentParser: 参数解析器对象。
+    """
     parser = argparse.ArgumentParser(description="Autoplan Agent - simple main entry")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -101,9 +131,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """程序主入口函数。"""
     parser = build_parser()
     args = parser.parse_args()
-    args.func(args)
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

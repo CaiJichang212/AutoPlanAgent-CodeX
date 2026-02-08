@@ -1,3 +1,8 @@
+"""工作流引擎模块。
+
+该模块使用 LangGraph 构建任务处理工作流，包括任务理解、计划制定和计划执行等节点。
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,6 +28,21 @@ from autoplan_agent.logging_ import setup_logger
 
 
 class AgentState(TypedDict, total=False):
+    """代理状态定义。
+
+    Attributes:
+        run_id: 运行 ID。
+        user_task: 用户任务描述。
+        understanding: 任务理解报告。
+        plan: 执行计划。
+        approved: 是否已批准。
+        feedback: 用户反馈。
+        patch_understanding: 修正后的理解数据。
+        artifacts: 生成的产物列表。
+        status: 当前状态。
+        message: 状态消息。
+        template_id: 模板 ID。
+    """
     run_id: str
     user_task: str
     understanding: TaskUnderstandingReport
@@ -37,10 +57,24 @@ class AgentState(TypedDict, total=False):
 
 
 def _prompt_dir() -> Path:
+    """获取提示词模板目录。
+
+    Returns:
+        Path: 提示词模板目录路径。
+    """
     return Path(__file__).parent / "llm" / "prompts"
 
 
 def understand_task(state: AgentState, settings: Settings) -> TaskUnderstandingReport:
+    """理解用户任务。
+
+    Args:
+        state: 当前代理状态。
+        settings: 应用配置。
+
+    Returns:
+        TaskUnderstandingReport: 任务理解报告。
+    """
     if state.get("understanding"):
         return state["understanding"]
     llm = get_llm(settings)
@@ -59,6 +93,14 @@ def understand_task(state: AgentState, settings: Settings) -> TaskUnderstandingR
 
 
 def _coerce_str_list(value: Any) -> list[str]:
+    """将值强制转换为字符串列表。
+
+    Args:
+        value: 要转换的值。
+
+    Returns:
+        list[str]: 字符串列表。
+    """
     if value is None:
         return []
     if isinstance(value, list):
@@ -71,6 +113,15 @@ def _coerce_str_list(value: Any) -> list[str]:
 
 
 def _normalize_understanding_payload(data: Any, user_task: str) -> Dict[str, Any]:
+    """规范化任务理解的数据负载。
+
+    Args:
+        data: 原始数据。
+        user_task: 用户任务描述。
+
+    Returns:
+        Dict[str, Any]: 规范化后的数据字典。
+    """
     if not isinstance(data, dict):
         data = {}
 
@@ -129,6 +180,15 @@ def _normalize_understanding_payload(data: Any, user_task: str) -> Dict[str, Any
 
 
 def plan_task(state: AgentState, settings: Settings) -> ExecutionPlan:
+    """为任务制定执行计划。
+
+    Args:
+        state: 当前代理状态。
+        settings: 应用配置。
+
+    Returns:
+        ExecutionPlan: 执行计划对象。
+    """
     if state.get("plan"):
         return state["plan"]
     llm = get_llm(settings)
@@ -169,6 +229,15 @@ def plan_task(state: AgentState, settings: Settings) -> ExecutionPlan:
 
 
 def _fallback_plan(state: AgentState, template_yaml: str) -> Dict[str, Any]:
+    """在计划制定失败时提供后备计划。
+
+    Args:
+        state: 当前代理状态。
+        template_yaml: 计划模板 YAML 字符串。
+
+    Returns:
+        Dict[str, Any]: 后备计划数据。
+    """
     template = yaml.safe_load(template_yaml)
     steps = []
     for item in template.get("steps", []):
@@ -194,8 +263,15 @@ def _fallback_plan(state: AgentState, template_yaml: str) -> Dict[str, Any]:
     }
 
 
-
 def _ensure_step_ids(data: Dict[str, Any]) -> Dict[str, Any]:
+    """确保计划中的每个步骤都有 ID。
+
+    Args:
+        data: 计划数据。
+
+    Returns:
+        Dict[str, Any]: 更新后的计划数据。
+    """
     steps = data.get("steps", [])
     for step in steps:
         if not step.get("step_id"):
@@ -207,6 +283,15 @@ def _ensure_step_ids(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _coerce_int(value: Any, default: int = 0) -> int:
+    """将值强制转换为整数。
+
+    Args:
+        value: 要转换的值。
+        default: 转换失败时的默认值。
+
+    Returns:
+        int: 转换后的整数。
+    """
     if isinstance(value, bool):
         return int(value)
     if isinstance(value, int):
@@ -222,6 +307,15 @@ def _coerce_int(value: Any, default: int = 0) -> int:
 
 
 def _normalize_plan_payload(data: Any, run_id: str) -> Dict[str, Any]:
+    """规范化执行计划的数据负载。
+
+    Args:
+        data: 原始计划数据。
+        run_id: 运行 ID。
+
+    Returns:
+        Dict[str, Any]: 规范化后的计划数据字典。
+    """
     if not isinstance(data, dict):
         data = {}
 
@@ -291,20 +385,54 @@ def _normalize_plan_payload(data: Any, run_id: str) -> Dict[str, Any]:
 
 
 def node_understand(state: AgentState, settings: Settings) -> Dict[str, Any]:
+    """理解节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+        settings: 应用配置。
+
+    Returns:
+        Dict[str, Any]: 更新后的状态字典。
+    """
     understanding = understand_task(state, settings)
     return {"understanding": understanding}
 
 
 def node_plan(state: AgentState, settings: Settings) -> Dict[str, Any]:
+    """计划节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+        settings: 应用配置。
+
+    Returns:
+        Dict[str, Any]: 更新后的状态字典。
+    """
     plan = plan_task(state, settings)
     return {"plan": plan}
 
 
 def node_confirm(state: AgentState) -> Dict[str, Any]:
+    """确认节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+
+    Returns:
+        Dict[str, Any]: 更新后的状态字典，设置状态为需要确认。
+    """
     return {"status": "NEEDS_CONFIRMATION"}
 
 
 def node_apply_feedback(state: AgentState) -> Dict[str, Any]:
+    """应用用户反馈节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+
+    Returns:
+        Dict[str, Any]: 更新后的状态字典，包含更新后的理解报告。
+    """
     if not state.get("feedback"):
         if not state.get("patch_understanding"):
             return {}
@@ -320,6 +448,15 @@ def node_apply_feedback(state: AgentState) -> Dict[str, Any]:
 
 
 def node_execute(state: AgentState, settings: Settings) -> Dict[str, Any]:
+    """执行节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+        settings: 应用配置。
+
+    Returns:
+        Dict[str, Any]: 任务执行结果。
+    """
     registry = build_registry(settings)
     run_path = init_run(settings.runs_dir, state["run_id"])
     logger = setup_logger("autoplan-agent", log_file=run_path / "logs" / "run.log")
@@ -331,6 +468,14 @@ def node_execute(state: AgentState, settings: Settings) -> Dict[str, Any]:
 
 
 def node_report(state: AgentState) -> Dict[str, Any]:
+    """报告节点处理函数。
+
+    Args:
+        state: 当前代理状态。
+
+    Returns:
+        Dict[str, Any]: 更新后的状态字典。
+    """
     status = state.get("status")
     if status and status != "DONE":
         return {}
@@ -338,12 +483,28 @@ def node_report(state: AgentState) -> Dict[str, Any]:
 
 
 def decide_next(state: AgentState) -> str:
+    """根据审批状态决定下一个节点。
+
+    Args:
+        state: 当前代理状态。
+
+    Returns:
+        str: 下一个节点的名称。
+    """
     if state.get("approved"):
         return "execute"
     return "confirm"
 
 
 def build_graph(settings: Settings):
+    """构建工作流图。
+
+    Args:
+        settings: 应用配置。
+
+    Returns:
+        StateGraph: 编译前的工作流图对象。
+    """
     graph = StateGraph(AgentState)
     graph.add_node("understand", lambda s: node_understand(s, settings))
     graph.add_node("apply_feedback", node_apply_feedback)
@@ -364,6 +525,15 @@ def build_graph(settings: Settings):
 
 
 def run_graph(input_state: Dict[str, Any], settings: Settings):
+    """运行工作流。
+
+    Args:
+        input_state: 初始状态字典。
+        settings: 应用配置。
+
+    Returns:
+        Any: 工作流运行结果。
+    """
     run_path = init_run(settings.runs_dir, input_state["run_id"])
     checkpointer = get_checkpointer(run_path)
     graph = build_graph(settings)

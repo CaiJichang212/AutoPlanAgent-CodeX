@@ -1,3 +1,8 @@
+"""MySQL 客户端工具模块。
+
+该模块提供 MySQL 引擎创建和 Schema 提示信息加载功能。
+"""
+
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import Engine
 from typing import List, Dict, Any, Optional
@@ -6,6 +11,17 @@ from autoplan_agent.config import Settings
 
 
 def create_mysql_engine(settings: Settings) -> Engine:
+    """创建 SQLAlchemy MySQL 引擎。
+
+    Args:
+        settings: 应用配置对象。
+
+    Returns:
+        Engine: SQLAlchemy 引擎实例。
+
+    Raises:
+        RuntimeError: 如果缺少连接信息。
+    """
     dsn = settings.mysql_dsn()
     if not dsn:
         raise RuntimeError("MySQL connection info missing. Set MYSQL_URL or MYSQL_HOST/USER/PASSWORD/DB.")
@@ -36,6 +52,17 @@ def create_mysql_engine(settings: Settings) -> Engine:
 
 
 def load_mysql_schema_hint(settings: Settings, relevant_tables: List[str] | None = None) -> str | None:
+    """加载 MySQL Schema 提示信息。
+
+    用于辅助 LLM 生成 SQL 语句，包含表结构和特定的连接逻辑提示。
+
+    Args:
+        settings: 应用配置对象。
+        relevant_tables: 相关表名列表。
+
+    Returns:
+        str | None: Schema 提示字符串，如果失败则返回 None。
+    """
     dsn = settings.mysql_dsn()
     if not dsn:
         return None

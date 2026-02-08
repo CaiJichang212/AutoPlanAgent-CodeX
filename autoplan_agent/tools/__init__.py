@@ -1,3 +1,8 @@
+"""工具包初始化模块。
+
+该模块负责构建并返回工具注册表，其中注册了所有可用的内置工具。
+"""
+
 from autoplan_agent.schemas.artifacts import StepResult
 import importlib.util
 from pathlib import Path
@@ -29,6 +34,14 @@ from autoplan_agent.tools.builtins import (
 
 
 def build_registry(settings: Settings | None = None) -> ToolRegistry:
+    """构建并初始化工具注册表。
+
+    Args:
+        settings: 可选的应用配置。
+
+    Returns:
+        ToolRegistry: 已注册所有内置工具的注册表实例。
+    """
     registry = ToolRegistry()
     registry.register(
         ToolSpec(
